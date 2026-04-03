@@ -25,6 +25,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "Drivers/LTC2494/LTC2494.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -93,6 +95,30 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+// Wrapper for STM32 SPI
+bool my_spi_transfer(uint8_t *tx, uint8_t *rx, uint16_t len) {
+    HAL_GPIO_WritePin(SPI1_nCS_GPIO_Port, SPI1_nCS_Pin, GPIO_PIN_RESET); // CS Low
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(&hspi1, tx, rx, len, 100);
+    HAL_GPIO_WritePin(SPI1_nCS_GPIO_Port, SPI1_nCS_Pin, GPIO_PIN_SET);   // CS High
+    return (status == HAL_OK);
+}
+
+void process_adc(void) {
+    ltc2494_config_t adc_cfg = {
+        .channel_pair = 0,               // CH0-CH1
+        .polarity_swap = false,          // CH0 is +, CH1 is -
+        .gain = LTC2494_GAIN_1,
+        .rejection = LTC2494_REJECT_50_60HZ
+    };
+
+    int32_t result = 0;
+
+    // Note: The first call triggers the first conversion.
+    // The result will be valid on the SECOND call.
+    if (ltc2494_transceive(my_spi_transfer, &adc_cfg, &result)) {
+        // Use your 16-bit result here
+    }
+}
   /* USER CODE END 2 */
 
   /* Infinite loop */
